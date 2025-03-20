@@ -28,6 +28,8 @@ interface CopiedAsset {
 
 const assetsDirName = "assets";
 const fileHashRegexp = /(-[A-Z0-9]{8})(\.\S+)$/;
+// list of file names to not be copied or included in the manifest
+const omittedFiles = [".DS_Store"];
 
 // ManifestManager serializes manifest reads and writes through a promise queue and writes
 // atomically (tmp file + rename), so the esbuild onEnd writer and the chokidar handlers can't race
@@ -268,6 +270,11 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
 
             // Skip directories and any other non-files
             if (!fs.statSync(sourcePath).isFile()) {
+              return;
+            }
+
+            // Skip files that are intentionally omitted
+            if (omittedFiles.includes(file.toString())) {
               return;
             }
 
