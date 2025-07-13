@@ -125,16 +125,8 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
         //
 
         function assetDirectories(): string[] {
-          const excludeDirs = ["js", "css"];
-
           try {
-            const dirs = globSync([path.join(assetsSourcePath, "*")], { nodir: false });
-            const filteredDirs = dirs.filter((dir) => {
-              const dirName = dir.split(path.sep).pop();
-              return !excludeDirs.includes(dirName!);
-            });
-
-            return filteredDirs;
+            return globSync([path.join(assetsSourcePath, "*")], { nodir: false });
           } catch (err) {
             console.error("Error listing external directories:", err);
             return [];
@@ -170,12 +162,8 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
                 .replace(path.basename(file.toString()), destFileName),
             );
 
-            if (fs.lstatSync(sourcePath).isDirectory()) {
-              assets.push(...processAssetDirectory(destPath));
-            } else {
-              copyAsset(sourcePath, destPath);
-              assets.push({ sourcePath: sourcePath, destPath: destPath });
-            }
+            copyAsset(sourcePath, destPath);
+            assets.push({ sourcePath: sourcePath, destPath: destPath });
           });
 
           return assets;

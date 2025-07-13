@@ -195,6 +195,39 @@ describe("hanami-assets", () => {
     });
   });
 
+  test("handles files inside js/ directory that was not already processed", async () => {
+    const entryPointFile = path.join(dest, "app/assets/js/app.js");
+    await fs.writeFile(entryPointFile, "console.log('Hello, World!');");
+    const nonEntryPointFile = path.join(dest, "app/assets/js/test.js");
+    await fs.writeFile(nonEntryPointFile, "console.log('Hello, Other World!');");
+
+    // Compile assets
+    await assets.run({ root: dest, argv: ["--path=app", "--dest=public/assets"] });
+
+    const appAsset = globSync(path.join("public/assets/app-*.js"))[0];
+    const appAssetExists = await fs.pathExists(appAsset);
+    expect(appAssetExists).toBe(true);
+
+    const otherAsset = globSync(path.join("public/assets/test-*.js"))[0];
+    const otherAssetExists = await fs.pathExists(otherAsset);
+    expect(otherAssetExists).toBe(true);
+
+    const manifestContent = await fs.readFile(
+      path.join(dest, "public/assets/assets.json"),
+      "utf-8",
+    );
+    const manifest = JSON.parse(manifestContent);
+
+    expect(manifest).toEqual({
+      "app.js": {
+        url: "/assets/app-JLSTK5SN.js",
+      },
+      "test.js": {
+        url: "/assets/test-6AF79D7A.js",
+      },
+    });
+  });
+
   test("generates SRI", async () => {
     const appEntryPoint = path.join(dest, "app/assets/js/app.js");
     await fs.writeFile(appEntryPoint, "console.log('Hello, World!');");
