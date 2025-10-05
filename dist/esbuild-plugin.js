@@ -2,7 +2,7 @@ import fs from "fs-extra";
 import path from "path";
 import crypto from "node:crypto";
 import { globSync } from "glob";
-const URL_SEPARATOR = "/";
+import { normalizePath } from "./esbuild.js";
 const assetsDirName = "assets";
 const fileHashRegexp = /(-[A-Z0-9]{8})(\.\S+)$/;
 const hanamiEsbuild = (options) => {
@@ -40,6 +40,7 @@ const hanamiEsbuild = (options) => {
                     var sourceUrl = copiedAsset.sourcePath.replace(assetsSourcePath + path.sep, "");
                     // Then remove the first subdir (e.g. "images/"), since we do not include those in the asset paths
                     sourceUrl = sourceUrl.substring(sourceUrl.indexOf("/") + 1);
+                    sourceUrl = normalizePath(sourceUrl);
                     manifest[sourceUrl] = prepareAsset(copiedAsset.destPath);
                 }
                 // Add files already bundled by esbuild into the manifest
@@ -62,11 +63,11 @@ const hanamiEsbuild = (options) => {
                         //
                         // For example, given the input file "app/assets/images/icons/some-icon.png", return a
                         // manifest key of "icons/some-icon.png".
-                        manifestKey = inputFiles[0]
+                        manifestKey = normalizePath(inputFiles[0]
                             .substring(assetsSourceDir.length + 1) // + 1 to account for the sep
                             .split(path.sep)
                             .slice(1)
-                            .join(path.sep);
+                            .join(path.sep));
                     }
                     else {
                         // For all other outputs, determine the manifest key based on the output file name,
@@ -74,21 +75,19 @@ const hanamiEsbuild = (options) => {
                         //
                         // For example, given the output "public/assets/app-2TLUHCQ6.js", return an manifest
                         // key of "app.js".
-                        manifestKey = outputFile
-                            .replace(options.destDir + path.sep, "")
-                            .replace(fileHashRegexp, "$2");
+                        manifestKey = path.basename(outputFile).replace(fileHashRegexp, "$2");
                     }
                     manifest[manifestKey] = prepareAsset(outputFile);
                 }
                 // Write assets manifest to the destination directory
-                await fs.writeJson(manifestPath, manifest, { spaces: 2 });
+                await fs.outputJSON(manifestPath, manifest, { spaces: 2 });
                 //
                 // Helper functions
                 //
                 function assetDirectories() {
                     const excludeDirs = ["js", "css"];
                     try {
-                        const dirs = globSync([path.join(assetsSourcePath, "*")], { nodir: false });
+                        const dirs = globSync([normalizePath(path.join(assetsSourcePath, "*"))], { nodir: false });
                         const filteredDirs = dirs.filter((dir) => {
                             const dirName = dir.split(path.sep).pop();
                             return !excludeDirs.includes(dirName);
@@ -158,7 +157,7 @@ const hanamiEsbuild = (options) => {
                     return asset;
                 }
                 function calculateDestinationUrl(str) {
-                    const normalizedUrl = str.replace(/[\\]+/, URL_SEPARATOR);
+                    const normalizedUrl = normalizePath(str);
                     return normalizedUrl.replace(/public/, "");
                 }
                 function calculateSubresourceIntegrity(algorithm, path) {

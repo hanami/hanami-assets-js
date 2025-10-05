@@ -5,3 +5,4 @@ export interface EsbuildOptions extends Partial<BuildOptions> {
 }
 export declare const buildOptions: (root: string, args: Args) => EsbuildOptions;
 export declare const watchOptions: (root: string, args: Args) => EsbuildOptions;
+export declare const normalizePath: (path: string) => string;

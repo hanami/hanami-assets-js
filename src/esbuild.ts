@@ -35,7 +35,7 @@ const findEntryPoints = (sliceRoot: string): Record<string, string> => {
   const result: Record<string, string> = {};
 
   const entryPoints = globSync([
-    path.join(sliceRoot, assetsDirName, "js", "**", entryPointExtensions),
+    normalizePath(path.join(normalizePath(sliceRoot), assetsDirName, "js", "**", entryPointExtensions)),
   ]);
 
   entryPoints.forEach((entryPoint) => {
@@ -110,3 +110,7 @@ export const watchOptions = (root: string, args: Args): EsbuildOptions => {
 
   return options;
 };
+
+export const normalizePath = (path: string): string => {
+  return path.replace(/[\\]+/g, "/");
+}
