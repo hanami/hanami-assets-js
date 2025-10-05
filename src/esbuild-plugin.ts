@@ -26,6 +26,8 @@ interface CopiedAsset {
 
 const assetsDirName = "assets";
 const fileHashRegexp = /(-[A-Z0-9]{8})(\.\S+)$/;
+// list of file names to not be copied or included in the manifest
+const omittedFiles = [".DS_Store"];
 
 const hanamiEsbuild = (options: PluginOptions): Plugin => {
   return {
@@ -155,6 +157,11 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
 
             // Skip directories and any other non-files
             if (!fs.statSync(sourcePath).isFile()) {
+              return;
+            }
+
+            // Skip files that are intentionally omitted
+            if (omittedFiles.includes(file.toString())) {
               return;
             }
 
