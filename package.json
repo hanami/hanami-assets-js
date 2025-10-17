@@ -1,6 +1,6 @@
 {
   "name": "hanami-assets",
-  "version": "2.3.0-beta.1",
+  "version": "2.3.0-beta.2",
   "type": "module",
   "description": "Hanami assets management via Esbuild",
   "main": "dist/index.js",
