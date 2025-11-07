@@ -16,6 +16,8 @@ Assets management via Esbuild
 
 ### Security
 
+## [2.3.0] - Unreleased
+
 ## [2.3.0-beta.2] - 2025-10-03
 
 ## [2.3.0-beta.1] - 2025-10-03
@@ -88,6 +90,8 @@ Assets management via Esbuild
 - [Luca Guidi] Assets manifest
 - [Luca Guidi] Assets compilation
 
-[unreleased]: https://github.com/hanami/assets-js/compare/v2.3.0.beta1...HEAD
+[unreleased]: https://github.com/hanami/assets-js/compare/v2.3.0...HEAD
+[v2.3.0]: https://github.com/hanami/assets-js/compare/v2.3.0.beta2...v2.3.0
+[v2.3.0.beta2] https://github.com/hanami/assets-js/compare/v2.3.0.beta1...v2.3.0.beta2
 [v2.3.0.beta1] https://github.com/hanami/assets-js/compare/v2.2.1...v2.3.0.beta1
 [v2.2.2]: https://github.com/hanami/assets-js/compare/v2.2.1...v2.2.2
