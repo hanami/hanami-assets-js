@@ -16,7 +16,7 @@ Assets management via Esbuild
 
 ### Security
 
-## [2.3.0] - Unreleased
+## [2.3.0] - 2025-11-12
 
 ## [2.3.0-beta.2] - 2025-10-03
 
