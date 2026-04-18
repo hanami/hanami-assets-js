@@ -41,7 +41,7 @@ jobs:
         run: npx prettier . --check
 
       - name: Test
-        run: make test
+        run: npm test
 
   workflow-keepalive:
     if: github.event_name == 'schedule'
