@@ -11,8 +11,6 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Changed
 
-- Bump glob dependency to `^13.0.6` to address deprecation warnings for glob v11 and earlier. (@timriley in #42)
-
 ### Deprecated
 
 ### Removed
@@ -21,7 +19,15 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Security
 
-[Unreleased]: https://github.com/hanami/assets-js/compare/v2.3.1...main
+[Unreleased]: https://github.com/hanami/assets-js/compare/v2.3.2...main
+
+## [2.3.2] - 2026-04-18
+
+### Changed
+
+- Bump glob dependency to `^13.0.6` to address deprecation warnings for glob v11 and earlier. (@timriley in #42)
+
+[2.3.1]: https://github.com/hanami/assets-js/compare/v2.3.1...v2.3.2
 
 ## [2.3.1] - 2025-11-14
 
