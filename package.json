@@ -15,6 +15,9 @@
     "prepack": "npm run clean && npm run build",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "keywords": [
     "hanami",
     "assets",
