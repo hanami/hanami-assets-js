@@ -31,10 +31,10 @@
   "homepage": "https://hanamirb.org",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hanami/assets-js.git"
+    "url": "git+https://github.com/hanami/hanami-assets-js.git"
   },
   "bugs": {
-    "url": "https://github.com/hanami/assets-js/issues"
+    "url": "https://github.com/hanami/hanami-assets-js/issues"
   },
   "funding": {
     "url": "https://github.com/sponsors/hanami"
