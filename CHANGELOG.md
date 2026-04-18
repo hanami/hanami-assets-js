@@ -8,6 +8,8 @@ Assets management via Esbuild
 
 ### Changed
 
+- Bump glob dependency to `^13.0.6` to address deprecation warnings for glob v11 and earlier. (@timriley in #42)
+
 ### Deprecated
 
 ### Removed
