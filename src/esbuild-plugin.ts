@@ -28,7 +28,9 @@ interface CopiedAsset {
 
 const assetsDirName = "assets";
 const fileHashRegexp = /(-[A-Z0-9]{8})(\.\S+)$/;
-// list of file names to not be copied or included in the manifest
+
+// File names to never copy or include in the manifest. Matched by basename so nested occurrences
+// are also skipped.
 const omittedFiles = [".DS_Store"];
 
 // ManifestManager serializes manifest reads and writes through a promise queue and writes
@@ -274,7 +276,7 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
             }
 
             // Skip files that are intentionally omitted
-            if (omittedFiles.includes(file.toString())) {
+            if (omittedFiles.includes(path.basename(sourcePath))) {
               return;
             }
 
@@ -405,6 +407,10 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
             return;
           }
 
+          if (omittedFiles.includes(path.basename(filePath))) {
+            return;
+          }
+
           if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
             return;
           }
@@ -432,6 +438,10 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
           const matchedDir = assetDirs.find((dir) => filePath.startsWith(dir));
 
           if (!matchedDir || loadedFiles.has(filePath)) {
+            return;
+          }
+
+          if (omittedFiles.includes(path.basename(filePath))) {
             return;
           }
 
