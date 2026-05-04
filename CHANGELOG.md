@@ -19,7 +19,15 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Security
 
-[Unreleased]: https://github.com/hanami/assets-js/compare/v2.3.2...main
+[Unreleased]: https://github.com/hanami/assets-js/compare/v2.3.3...main
+
+## [2.3.3] - 2026-05-04
+
+### Fixed
+
+- Remove stray local development configs from published package. (@timriley in #43)
+
+[2.3.3]: https://github.com/hanami/assets-js/compare/v2.3.2...v2.3.3
 
 ## [2.3.2] - 2026-04-18
 
