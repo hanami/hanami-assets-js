@@ -1,49 +1,20 @@
-# assets-js
+<!--- This file is synced from hanakai-rb/repo-sync -->
 
-esbuild plugin for Hanami assets
+[actions]: https://github.com/hanami/hanami-assets-js/actions
+[chat]: https://discord.gg/naQApPAsZB
+[forum]: https://discourse.hanamirb.org
+[npm]: https://www.npmjs.com/package/hanami-assets
 
-## Status
+# hanami-assets [![npm Version](https://img.shields.io/npm/v/hanami-assets.svg)][npm] [![CI Status](https://github.com/hanami/hanami-assets-js/workflows/CI/badge.svg)][actions]
 
-[![CI](https://github.com/hanami/assets-js/actions/workflows/ci.yml/badge.svg)](https://github.com/hanami/assets-js/actions?query=workflow%3Aci+branch%3Amain)
+[![Forum](https://img.shields.io/badge/Forum-dc360f?logo=discourse&logoColor=white)][forum]
+[![Chat](https://img.shields.io/badge/Chat-717cf8?logo=discord&logoColor=white)][chat]
 
-## Contact
+## Links
 
-* Home page: https://hanamirb.org
-* Guides: https://guides.hanamirb.org
-* Community: https://hanamirb.org/community
+- [User documentation](https://hanamirb.org)
 
-## Testing
+## License
 
-Install the Node packages:
+See `LICENSE` file.
 
-```
-npm install
-```
-
-And run the [Jest test suite](https://jestjs.io/):
-
-```
-npm test
-```
-
-To use `debugger` breakpoints in the tests, open `chrome://inspect` with any Chrome-based browser and click on "Open dedicated DevTools for Node" to open a debugger window. Then:
-
-```
-npm run test:debug
-```
-
-## Versioning
-
-__assets-js__ uses [Semantic Versioning 2.0.0](http://semver.org)
-
-## Contributing
-
-1. Fork it (https://github.com/hanami/assets-js/fork)
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
-
-## Copyright
-
-Copyright © 2014–2025 Hanami Team – Released under MIT License
