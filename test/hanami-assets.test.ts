@@ -503,6 +503,69 @@ describe("hanami-assets", () => {
   );
 
   test(
+    "watch: detects a newly added entry point",
+    async () => {
+      const entryPoint = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, World!');");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        await waitForManifest(dest, (m) => Boolean(m["app.js"]));
+
+        await fs.ensureDir(path.join(dest, "app/assets/js/admin"));
+        const newEntryPoint = path.join(dest, "app/assets/js/admin/app.js");
+        await fs.writeFile(newEntryPoint, "console.log('Hello, Admin!');");
+
+        await waitForManifest(dest, (m) => Boolean(m["admin/app.js"]));
+
+        const manifest = readManifest(dest);
+        expect(manifest["admin/app.js"]).toEqual({ url: "/assets/admin/app.js" });
+        expect(manifest["app.js"]).toBeDefined();
+
+        const newOutput = path.join(dest, "public/assets/admin/app.js");
+        expect(fs.existsSync(newOutput)).toBe(true);
+        expect(await fs.readFile(newOutput, "utf-8")).toMatch('console.log("Hello, Admin!");');
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
+    "watch: detects a removed entry point",
+    async () => {
+      const mainEntry = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(mainEntry, "console.log('main');");
+
+      await fs.ensureDir(path.join(dest, "app/assets/js/admin"));
+      const adminEntry = path.join(dest, "app/assets/js/admin/app.js");
+      await fs.writeFile(adminEntry, "console.log('admin');");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        await waitForManifest(dest, (m) => Boolean(m["admin/app.js"]));
+
+        await fs.remove(adminEntry);
+
+        await waitForManifest(dest, (m) => !m["admin/app.js"]);
+        expect(readManifest(dest)["app.js"]).toBeDefined();
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
     "watch: preserves esbuild outputs in the manifest when a static asset changes",
     async () => {
       const entryPoint = path.join(dest, "app/assets/js/app.js");

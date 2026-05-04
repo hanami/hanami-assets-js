@@ -31,7 +31,10 @@ const loader: { [ext: string]: Loader } = {
 const assetsDirName = "assets";
 const entryPointExtensions = "app.{js,ts,mjs,mts,tsx,jsx}";
 
-const findEntryPoints = (sliceRoot: string): Record<string, string> => {
+export const entryPointsDir = (sliceRoot: string): string =>
+  path.join(sliceRoot, assetsDirName, "js");
+
+export const findEntryPoints = (sliceRoot: string): Record<string, string> => {
   const result: Record<string, string> = {};
 
   const entryPoints = globSync([
