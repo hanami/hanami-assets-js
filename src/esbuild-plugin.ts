@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import path from "path";
 import crypto from "node:crypto";
 import { globSync } from "glob";
+import chokidar, { FSWatcher } from "chokidar";
 
 const URL_SEPARATOR = "/";
 
@@ -12,6 +13,7 @@ export interface PluginOptions {
   destDir: string;
   sriAlgorithms: Array<string>;
   hash: boolean;
+  watch: boolean;
 }
 
 interface Asset {
@@ -27,7 +29,106 @@ interface CopiedAsset {
 const assetsDirName = "assets";
 const fileHashRegexp = /(-[A-Z0-9]{8})(\.\S+)$/;
 
+// ManifestManager serializes manifest reads and writes through a promise queue and writes
+// atomically (tmp file + rename), so the esbuild onEnd writer and the chokidar handlers can't race
+// on assets.json.
+class ManifestManager {
+  private manifestPath: string;
+  private queue: Promise<any> = Promise.resolve();
+
+  constructor(manifestPath: string) {
+    this.manifestPath = manifestPath;
+  }
+
+  // Execute an operation with exclusive access to the manifest.
+  private async enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const currentQueue = this.queue;
+    let resolver: (value: T) => void;
+    let rejecter: (error: any) => void;
+
+    const promise = new Promise<T>((resolve, reject) => {
+      resolver = resolve;
+      rejecter = reject;
+    });
+
+    this.queue = currentQueue.then(
+      async () => {
+        try {
+          const result = await operation();
+          resolver(result);
+          return result;
+        } catch (err) {
+          rejecter(err);
+          throw err;
+        }
+      },
+      async (err) => {
+        rejecter(err);
+        throw err;
+      },
+    );
+
+    return promise;
+  }
+
+  async read(): Promise<Record<string, Asset>> {
+    return this.enqueue(async () => {
+      try {
+        return await fs.readJSON(this.manifestPath);
+      } catch (err) {
+        return {};
+      }
+    });
+  }
+
+  async write(manifest: Record<string, Asset>): Promise<void> {
+    return this.enqueue(async () => {
+      const tempPath = `${this.manifestPath}.tmp`;
+      await fs.writeJSON(tempPath, manifest, { spaces: 2 });
+      await fs.rename(tempPath, this.manifestPath);
+    });
+  }
+
+  async updateEntry(key: string, value: Asset): Promise<void> {
+    return this.enqueue(async () => {
+      const manifest = await this.readUnsafe();
+      manifest[key] = value;
+      await this.writeUnsafe(manifest);
+    });
+  }
+
+  async removeEntry(key: string): Promise<void> {
+    return this.enqueue(async () => {
+      const manifest = await this.readUnsafe();
+      if (manifest[key]) {
+        delete manifest[key];
+        await this.writeUnsafe(manifest);
+      }
+    });
+  }
+
+  // readUnsafe and writeUnsafe skip the queue; only call from inside an enqueue() block that
+  // already holds exclusive access.
+  private async readUnsafe(): Promise<Record<string, Asset>> {
+    try {
+      return await fs.readJSON(this.manifestPath);
+    } catch (err) {
+      return {};
+    }
+  }
+
+  private async writeUnsafe(manifest: Record<string, Asset>): Promise<void> {
+    const tempPath = `${this.manifestPath}.tmp`;
+    await fs.writeJSON(tempPath, manifest, { spaces: 2 });
+    await fs.rename(tempPath, this.manifestPath);
+  }
+}
+
 const hanamiEsbuild = (options: PluginOptions): Plugin => {
+  let watcher: FSWatcher | null = null;
+  let isFirstBuild = true;
+  let manifestManager: ManifestManager;
+
   return {
     name: "hanami-esbuild",
 
@@ -37,6 +138,8 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
       const manifestPath = path.join(options.root, options.destDir, "assets.json");
       const assetsSourceDir = path.join(options.sourceDir, assetsDirName);
       const assetsSourcePath = path.join(options.root, assetsSourceDir);
+
+      manifestManager = new ManifestManager(manifestPath);
 
       // Track files loaded by esbuild so we don't double-process them.
       const loadedFiles = new Set<string>();
@@ -48,17 +151,27 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
       // After build, copy over any non-referenced asset files, and create a manifest.
       build.onEnd(async (result: BuildResult) => {
         const outputs = result.metafile?.outputs;
-        const manifest: Record<string, Asset> = {};
 
         if (typeof outputs === "undefined") {
           return;
         }
 
-        // Copy extra asset files (in dirs besides js/ and css/) into the destination directory
+        // In watch mode after first build, preserve existing static asset entries.
+        let manifest: Record<string, Asset> = {};
+        if (options.watch && !isFirstBuild) {
+          manifest = await manifestManager.read();
+        }
+
+        // Copy extra asset files (in dirs besides js/ and css/) into the destination directory.
+        //
+        // In watch mode, only process all static assets on the first build. Subsequent changes are
+        // handled by the chokidar watcher below.
         const copiedAssets: CopiedAsset[] = [];
-        assetDirectories().forEach((dir) => {
-          copiedAssets.push(...processAssetDirectory(dir));
-        });
+        if (!options.watch || isFirstBuild) {
+          assetDirectories().forEach((dir) => {
+            copiedAssets.push(...processAssetDirectory(dir));
+          });
+        }
 
         // Add copied assets into the manifest
         for (const copiedAsset of copiedAssets) {
@@ -118,7 +231,7 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
         }
 
         // Write assets manifest to the destination directory
-        await fs.writeJson(manifestPath, manifest, { spaces: 2 });
+        await manifestManager.write(manifest);
 
         //
         // Helper functions
@@ -241,6 +354,110 @@ const hanamiEsbuild = (options: PluginOptions): Plugin => {
           const result = crypto.createHash("sha256").update(hashBytes).digest("hex");
 
           return result.slice(0, 8).toUpperCase();
+        }
+
+        // Set up file watcher for static assets in watch mode.
+        if (options.watch && !watcher) {
+          const assetDirs = assetDirectories();
+
+          if (assetDirs.length > 0) {
+            watcher = chokidar.watch(assetDirs, {
+              cwd: options.root,
+              ignoreInitial: true,
+              persistent: true,
+            });
+
+            watcher.on("add", (filePath: string) => {
+              const fullPath = path.join(options.root, filePath);
+              processWatchedFile(fullPath);
+            });
+
+            watcher.on("change", (filePath: string) => {
+              const fullPath = path.join(options.root, filePath);
+              processWatchedFile(fullPath);
+            });
+
+            watcher.on("unlink", (filePath: string) => {
+              const fullPath = path.join(options.root, filePath);
+              removeWatchedFile(fullPath);
+            });
+
+            console.log("[hanami-esbuild] Watching for static asset changes...");
+          }
+
+          isFirstBuild = false;
+        }
+
+        // Copy a static asset that was added or changed during watch into the destination directory
+        // and refresh its entry in the manifest.
+        async function processWatchedFile(filePath: string): Promise<void> {
+          const assetDirs = assetDirectories();
+          const matchedDir = assetDirs.find((dir) => filePath.startsWith(dir));
+
+          if (!matchedDir || loadedFiles.has(filePath)) {
+            return;
+          }
+
+          if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+            return;
+          }
+
+          // Assumes options.hash is false. If we later want watch mode to support hashed filenames,
+          // this needs to mirror processAssetDirectory's hash-and-rename logic.
+          const destPath = path.join(options.destDir, path.relative(matchedDir, filePath));
+          copyAsset(filePath, destPath);
+
+          try {
+            let sourceUrl = filePath.replace(assetsSourcePath + path.sep, "");
+            sourceUrl = sourceUrl.substring(sourceUrl.indexOf("/") + 1);
+            const asset = prepareAsset(destPath);
+            await manifestManager.updateEntry(sourceUrl, asset);
+            console.log(`[hanami-esbuild] Updated asset: ${sourceUrl}`);
+          } catch (err) {
+            console.error(`[hanami-esbuild] Error updating manifest:`, err);
+          }
+        }
+
+        // Remove a static asset's destination file and manifest entry after it was deleted from the
+        // source directory during watch.
+        async function removeWatchedFile(filePath: string): Promise<void> {
+          const assetDirs = assetDirectories();
+          const matchedDir = assetDirs.find((dir) => filePath.startsWith(dir));
+
+          if (!matchedDir || loadedFiles.has(filePath)) {
+            return;
+          }
+
+          try {
+            let sourceUrl = filePath.replace(assetsSourcePath + path.sep, "");
+            sourceUrl = sourceUrl.substring(sourceUrl.indexOf("/") + 1);
+
+            const manifest = await manifestManager.read();
+            if (manifest[sourceUrl]) {
+              const destPath = path.join(
+                options.root,
+                options.destDir,
+                path.relative(matchedDir, filePath),
+              );
+              if (fs.existsSync(destPath)) {
+                fs.removeSync(destPath);
+              }
+
+              await manifestManager.removeEntry(sourceUrl);
+              console.log(`[hanami-esbuild] Removed asset: ${sourceUrl}`);
+            }
+          } catch (err) {
+            console.error(`[hanami-esbuild] Error removing asset:`, err);
+          }
+        }
+      });
+
+      build.onDispose(() => {
+        if (watcher) {
+          watcher.close().catch((err) => {
+            console.error("[hanami-esbuild] Error closing watcher:", err);
+          });
+          watcher = null;
         }
       });
     },

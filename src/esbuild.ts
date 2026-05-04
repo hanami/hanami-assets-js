@@ -62,6 +62,7 @@ const commonPluginOptions = (root: string, args: Args): PluginOptions => {
     destDir: args.dest,
     hash: true,
     sriAlgorithms: [],
+    watch: false,
   };
 };
 
@@ -98,6 +99,7 @@ export const watchOptions = (root: string, args: Args): EsbuildOptions => {
   const pluginOptions: PluginOptions = {
     ...commonPluginOptions(root, args),
     hash: false,
+    watch: true,
   };
   const plugin = esbuildPlugin(pluginOptions);
 
