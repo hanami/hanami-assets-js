@@ -131,6 +131,35 @@ describe("hanami-assets", () => {
     });
   });
 
+  test("skips omitted files (e.g. .DS_Store) at any depth", async () => {
+    const appEntryPoint = path.join(dest, "app/assets/js/app.js");
+    await fs.writeFile(appEntryPoint, "console.log('Hello, World!');");
+    const appImage = path.join(dest, "app/assets/images/nested/app-image.jpg");
+    await fs.writeFile(appImage, "app-image");
+
+    // Plant .DS_Store files at multiple depths within asset directories
+    await fs.writeFile(path.join(dest, "app/assets/.DS_Store"), "ds_store");
+    await fs.writeFile(path.join(dest, "app/assets/images/.DS_Store"), "ds_store");
+    await fs.writeFile(path.join(dest, "app/assets/images/nested/.DS_Store"), "ds_store");
+    await fs.writeFile(path.join(dest, "app/assets/fonts/.DS_Store"), "ds_store");
+
+    await assets.run({ root: dest, argv: ["--path=app", "--dest=public/assets"] });
+
+    // No .DS_Store should be copied into the destination directory
+    const copied = globSync(path.join(dest, "public/assets/**/*"), { dot: true });
+    const copiedDsStores = copied.filter((p) => path.basename(p).startsWith(".DS_Store"));
+    expect(copiedDsStores).toEqual([]);
+
+    // No .DS_Store key (top-level or nested) should appear in the manifest
+    const manifestContent = await fs.readFile(
+      path.join(dest, "public/assets/assets.json"),
+      "utf-8",
+    );
+    const manifest = JSON.parse(manifestContent);
+    const dsStoreKeys = Object.keys(manifest).filter((k) => k.endsWith(".DS_Store"));
+    expect(dsStoreKeys).toEqual([]);
+  });
+
   test("handles references to files outside js/ and css/ directories", async () => {
     const entryPoint = path.join(dest, "app/assets/js/app.js");
     await fs.writeFile(entryPoint, 'import "../css/app.css";');
@@ -558,6 +587,44 @@ describe("hanami-assets", () => {
 
         await waitForManifest(dest, (m) => !m["admin/app.js"]);
         expect(readManifest(dest)["app.js"]).toBeDefined();
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
+    "watch: skips omitted files (e.g. .DS_Store) added during watch",
+    async () => {
+      const entryPoint = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, World!');");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        await waitForManifest(dest, (m) => Boolean(m["app.js"]));
+
+        // Plant .DS_Store files at multiple depths, plus a real image as a synchronization
+        // barrier so we know the watcher has caught up.
+        await fs.writeFile(path.join(dest, "app/assets/.DS_Store"), "ds_store");
+        await fs.writeFile(path.join(dest, "app/assets/images/.DS_Store"), "ds_store");
+        await fs.ensureDir(path.join(dest, "app/assets/images/nested"));
+        await fs.writeFile(path.join(dest, "app/assets/images/nested/.DS_Store"), "ds_store");
+        await fs.writeFile(path.join(dest, "app/assets/images/late.jpg"), "late");
+
+        await waitForManifest(dest, (m) => Boolean(m["late.jpg"]));
+
+        const manifest = readManifest(dest);
+        const dsStoreKeys = Object.keys(manifest).filter((k) => k.endsWith(".DS_Store"));
+        expect(dsStoreKeys).toEqual([]);
+
+        const copied = globSync(path.join(dest, "public/assets/**/*"), { dot: true });
+        const copiedDsStores = copied.filter((p) => path.basename(p).startsWith(".DS_Store"));
+        expect(copiedDsStores).toEqual([]);
       } finally {
         await ctx!.dispose();
       }
