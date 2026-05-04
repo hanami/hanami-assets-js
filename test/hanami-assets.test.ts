@@ -362,4 +362,195 @@ describe("hanami-assets", () => {
     },
     watchTimeout + 1000,
   );
+
+  test(
+    "watch: adds a new static asset created after the watcher starts",
+    async () => {
+      const entryPoint = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, World!');");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        // Wait for the first build to complete and the watcher to be set up.
+        await waitForManifest(dest, (m) => Boolean(m["app.js"]));
+
+        const newImage = path.join(dest, "app/assets/images/added.jpg");
+        await fs.writeFile(newImage, "added-image");
+
+        await waitForManifest(dest, (m) => Boolean(m["added.jpg"]));
+
+        const manifest = readManifest(dest);
+        expect(manifest["added.jpg"]).toEqual({ url: "/assets/added.jpg" });
+
+        const copied = path.join(dest, "public/assets/added.jpg");
+        expect(fs.existsSync(copied)).toBe(true);
+        expect(await fs.readFile(copied, "utf-8")).toBe("added-image");
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
+    "watch: refreshes a static asset modified after the watcher starts",
+    async () => {
+      const entryPoint = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, World!');");
+
+      const image = path.join(dest, "app/assets/images/logo.jpg");
+      await fs.writeFile(image, "original");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        await waitForManifest(dest, (m) => Boolean(m["logo.jpg"]));
+
+        // Sanity-check the first-build copy.
+        const copied = path.join(dest, "public/assets/logo.jpg");
+        expect(await fs.readFile(copied, "utf-8")).toBe("original");
+
+        await fs.writeFile(image, "updated");
+
+        await waitFor(async () => (await fs.readFile(copied, "utf-8")) === "updated");
+
+        const manifest = readManifest(dest);
+        expect(manifest["logo.jpg"]).toEqual({ url: "/assets/logo.jpg" });
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
+    "watch: removes a static asset deleted after the watcher starts",
+    async () => {
+      const entryPoint = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, World!');");
+
+      const image = path.join(dest, "app/assets/images/temp.jpg");
+      await fs.writeFile(image, "temp");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        await waitForManifest(dest, (m) => Boolean(m["temp.jpg"]));
+
+        const copied = path.join(dest, "public/assets/temp.jpg");
+        expect(fs.existsSync(copied)).toBe(true);
+
+        await fs.remove(image);
+
+        await waitForManifest(dest, (m) => !m["temp.jpg"]);
+
+        expect(fs.existsSync(copied)).toBe(false);
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
+    "watch: live-reloads static assets under a slice",
+    async () => {
+      const sliceDest = "public/assets/admin";
+      const entryPoint = path.join(dest, "slices/admin/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, Admin!');");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: [`--path=slices/admin`, `--dest=${sliceDest}`, "--watch"],
+      });
+
+      try {
+        await waitFor(() => Boolean(readManifest(dest, sliceDest)["app.js"]));
+
+        const newImage = path.join(dest, "slices/admin/assets/images/admin-added.jpg");
+        await fs.writeFile(newImage, "admin-added");
+
+        await waitFor(() => Boolean(readManifest(dest, sliceDest)["admin-added.jpg"]));
+
+        const manifest = readManifest(dest, sliceDest);
+        expect(manifest["admin-added.jpg"]).toEqual({
+          url: "/assets/admin/admin-added.jpg",
+        });
+
+        const copied = path.join(dest, sliceDest, "admin-added.jpg");
+        expect(fs.existsSync(copied)).toBe(true);
+        expect(await fs.readFile(copied, "utf-8")).toBe("admin-added");
+
+        await fs.remove(newImage);
+
+        await waitFor(() => !readManifest(dest, sliceDest)["admin-added.jpg"]);
+        expect(fs.existsSync(copied)).toBe(false);
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
+
+  test(
+    "watch: preserves esbuild outputs in the manifest when a static asset changes",
+    async () => {
+      const entryPoint = path.join(dest, "app/assets/js/app.js");
+      await fs.writeFile(entryPoint, "console.log('Hello, World!');");
+
+      const ctx = await assets.run({
+        root: dest,
+        argv: ["--path=app", "--dest=public/assets", "--watch"],
+      });
+
+      try {
+        await waitForManifest(dest, (m) => Boolean(m["app.js"]));
+        const initialJsEntry = readManifest(dest)["app.js"];
+
+        const image = path.join(dest, "app/assets/images/late.jpg");
+        await fs.writeFile(image, "late");
+        await waitForManifest(dest, (m) => Boolean(m["late.jpg"]));
+
+        const manifest = readManifest(dest);
+        expect(manifest["app.js"]).toEqual(initialJsEntry);
+        expect(manifest["late.jpg"]).toEqual({ url: "/assets/late.jpg" });
+      } finally {
+        await ctx!.dispose();
+      }
+    },
+    watchTimeout + 1000,
+  );
 });
+
+function readManifest(root: string, destDir = "public/assets"): Record<string, { url: string }> {
+  const manifestPath = path.join(root, destDir, "assets.json");
+  if (!fs.existsSync(manifestPath)) return {};
+  return fs.readJSONSync(manifestPath);
+}
+
+async function waitForManifest(
+  root: string,
+  predicate: (manifest: Record<string, { url: string }>) => boolean,
+  timeout = 10000,
+): Promise<void> {
+  await waitFor(() => predicate(readManifest(root)), timeout);
+}
+
+async function waitFor(check: () => boolean | Promise<boolean>, timeout = 10000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (await check()) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`Condition not met within ${timeout}ms`);
+}
