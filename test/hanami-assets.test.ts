@@ -2,7 +2,11 @@ import fs from "fs-extra";
 import path from "path";
 import { globSync } from "glob";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import * as assets from "../src/index";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const originalWorkingDir = process.cwd();
 const dest = path.resolve(__dirname, "..", "tmp", crypto.randomUUID());
