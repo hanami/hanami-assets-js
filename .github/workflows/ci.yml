@@ -17,11 +17,17 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node-version:
-          - 25.x
+          - 26.x
           - 24.x
           - 22.x
+        # esbuild is a peer dependency. Test our supported floor (synced with package.json) plus the
+        # latest release.
+        esbuild-version:
+          - 0.28.1
+          - latest
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
@@ -40,10 +46,18 @@ jobs:
             node-modules-${{ runner.os }}-${{ matrix.node-version }}-
       - name: Install dependencies
         run: npm ci
+      - name: Install esbuild ${{ matrix.esbuild-version }}
+        # --no-save overrides the development version without touching package.json or the lockfile
+        run: npm install --no-save esbuild@${{ matrix.esbuild-version }}
+      - name: Print resolved esbuild version
+        run: npx esbuild --version
       - name: Lint
+        # Linting is independent of the esbuild version, so only run it once per Node version.
+        if: matrix.esbuild-version == '0.28.1'
         run: npx prettier . --check
       - name: Test
         run: npm test
+        continue-on-error: ${{ matrix.esbuild-version == 'latest' }}
 
   workflow-keepalive:
     if: github.event_name == 'schedule'
