@@ -19,9 +19,9 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Security
 
-[Unreleased]: https://github.com/hanami/assets-js/compare/v3.0.0.rc1...main
+[Unreleased]: https://github.com/hanami/assets-js/compare/v3.0.0...main
 
-## [3.0.0.rc1] - 2026-06-16
+## [3.0.0] - 2026-06-30
 
 ## Added
 
@@ -37,7 +37,25 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 - Bump minimum supported esbuild to `0.28.1`. (@timriley in #51)
 - Require Node.js v22 or newer. (@timriley in #47)
 
-[3.0.0.rc1]: https://github.com/hanami/assets-js/compare/v2.3.3...v3.0.0
+[3.0.0]: https://github.com/hanami/hanami-assets-js/compare/v2.3.3...v3.0.0
+
+## [3.0.0-rc.1] - 2026-06-16
+
+## Added
+
+- Detect newly added entry points while in watch mode. (@timriley in #48)
+- Detect changes to static files while in watch mode. (@timriley in #46)
+
+### Changed
+
+- Skip `.DS_Store` files during build and watch. (@kyleplump in #37)
+- **Breaking:** Make esbuild a peer dependency. (@timriley in #51)
+
+    Your app must now depend on `esbuild` directly. This allows you to update esbuild on your own schedule without waiting for a new `hanami-assets` release.
+- Bump minimum supported esbuild to `0.28.1`. (@timriley in #51)
+- Require Node.js v22 or newer. (@timriley in #47)
+
+[3.0.0-rc.1]: https://github.com/hanami/hanami-assets-js/compare/v2.3.3...v3.0.0-rc.1
 
 ## [2.3.3] - 2026-05-04
 
