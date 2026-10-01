@@ -2,7 +2,7 @@
 
 [actions]: https://github.com/hanami/hanami-assets-js/actions
 [chat]: https://discord.gg/naQApPAsZB
-[forum]: https://discourse.hanamirb.org
+[forum]: https://discourse.hanakai.org
 [npm]: https://www.npmjs.com/package/hanami-assets
 
 # hanami-assets [![npm Version](https://img.shields.io/npm/v/hanami-assets.svg)][npm] [![CI Status](https://github.com/hanami/hanami-assets-js/workflows/CI/badge.svg)][actions]
