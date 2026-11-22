@@ -48,7 +48,7 @@ jobs:
         run: npm ci
       - name: Install esbuild ${{ matrix.esbuild-version }}
         # --no-save overrides the development version without touching package.json or the lockfile
-        run: npm install --no-save esbuild@${{ matrix.esbuild-version }}
+        run: npm install --no-save esbuild@${{ matrix.esbuild-version }} # zizmor: ignore[adhoc-packages]
       - name: Print resolved esbuild version
         run: npx esbuild --version
       - name: Lint
