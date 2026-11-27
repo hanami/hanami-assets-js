@@ -19,7 +19,13 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Security
 
-[Unreleased]: https://github.com/hanami/assets-js/compare/v3.0.0...main
+[Unreleased]: https://github.com/hanami/assets-js/compare/v3.1.0-rc.1...main
+
+## [3.1.0-rc.1] - 2026-11-27
+
+No changes.
+
+[3.1.0-rc.1]: https://github.com/hanami/hanami-assets-js/compare/v3.0.0...v3.1.0-rc.1
 
 ## [3.0.0] - 2026-06-30
 
